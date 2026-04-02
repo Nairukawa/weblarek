@@ -63,7 +63,7 @@ console.log('Покупатель после сохранения телефон
 
 buyerModel.setData({
   address: 'Москва, ул. Тестовая, д. 1',
-  payment: 'card',
+  payment: 'online',
 });
 console.log('Покупатель после заполнения всех данных:', buyerModel.getData());
 
