@@ -1,5 +1,6 @@
 import './scss/styles.scss';
 
+import { cloneTemplate } from './utils/utils';
 import { EventEmitter } from './components/base/Events';
 import { Api } from './components/base/Api';
 
@@ -39,12 +40,16 @@ const buyerModel = new BuyerModel(events);
 const baseApi = new Api(API_URL, settings);
 const webLarekApi = new WebLarekApi(baseApi);
 
-let currentModalView: TModalView = null;
+// Статичные компоненты создаются один раз
+const basketView = new Basket(cloneTemplate<HTMLElement>('#basket'), events);
+const previewCard = new CardPreview(cloneTemplate<HTMLElement>('#card-preview'), {
+  onClick: () => events.emit('card:toggle'),
+});
+const orderForm = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), events);
+const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
+const successView = new Success(cloneTemplate<HTMLElement>('#success'), events);
 
-function cloneTemplate(selector: string): HTMLElement {
-  const template = document.querySelector(selector) as HTMLTemplateElement;
-  return template.content.firstElementChild!.cloneNode(true) as HTMLElement;
-}
+let currentModalView: TModalView = null;
 
 function getPreviewButtonText(product: IProduct): string {
   if (product.price === null) {
@@ -84,18 +89,19 @@ function isContactsStepValid(errors: IBuyerFormErrors): boolean {
 }
 
 function createBasketContent(): HTMLElement {
-  const basket = new Basket(cloneTemplate('#basket'), events);
-
   const items = basketModel.getItems().map((product, index) => {
-    const card = new CardBasket(cloneTemplate('#card-basket'), events);
+    const card = new CardBasket(cloneTemplate<HTMLElement>('#card-basket'), {
+      onClick: () => events.emit('basket:remove', { id: product.id }),
+    });
 
     return card.render({
-      ...product,
+      title: product.title,
+      price: product.price,
       index: index + 1,
     });
   });
 
-  return basket.render({
+  return basketView.render({
     items,
     total: basketModel.getTotal(),
     disabled: basketModel.getCount() === 0,
@@ -103,27 +109,22 @@ function createBasketContent(): HTMLElement {
 }
 
 function createOrderContent(): HTMLElement {
-  const form = new OrderForm(cloneTemplate('#order') as HTMLFormElement, events);
   const buyer = buyerModel.getData();
   const errors = buyerModel.validate();
 
-  return form.render({
+  return orderForm.render({
     address: buyer.address || '',
-    payment: (buyer.payment as TPayment | '') || '',
+    payment: buyer.payment ?? '',
     valid: isOrderStepValid(errors),
     errors: getOrderErrors(errors),
   });
 }
 
 function createContactsContent(): HTMLElement {
-  const form = new ContactsForm(
-    cloneTemplate('#contacts') as HTMLFormElement,
-    events
-  );
   const buyer = buyerModel.getData();
   const errors = buyerModel.validate();
 
-  return form.render({
+  return contactsForm.render({
     email: buyer.email || '',
     phone: buyer.phone || '',
     valid: isContactsStepValid(errors),
@@ -132,9 +133,7 @@ function createContactsContent(): HTMLElement {
 }
 
 function createSuccessContent(total: number): HTMLElement {
-  const success = new Success(cloneTemplate('#success'), events);
-
-  return success.render({ total });
+  return successView.render({ total });
 }
 
 events.on('modal:open', () => {
@@ -148,8 +147,16 @@ events.on('modal:close', () => {
 
 events.on('catalog:changed', () => {
   const cards = catalogModel.getProducts().map((product) => {
-    const card = new CardCatalog(cloneTemplate('#card-catalog'), events);
-    return card.render(product);
+    const card = new CardCatalog(cloneTemplate<HTMLElement>('#card-catalog'), {
+      onClick: () => events.emit('card:select', { id: product.id }),
+    });
+
+    return card.render({
+      title: product.title,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+    });
   });
 
   page.catalog = cards;
@@ -162,13 +169,15 @@ events.on('preview:changed', () => {
     return;
   }
 
-  const card = new CardPreview(cloneTemplate('#card-preview'), events);
-
   currentModalView = 'preview';
 
   modal.render({
-    content: card.render({
-      ...product,
+    content: previewCard.render({
+      title: product.title,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+      description: product.description,
       buttonText: getPreviewButtonText(product),
       disabled: getPreviewButtonDisabled(product),
     }),
@@ -201,14 +210,14 @@ events.on<{ id: string }>('card:select', ({ id }) => {
   }
 });
 
-events.on<{ id: string }>('card:toggle', ({ id }) => {
-  const product = catalogModel.getProduct(id);
+events.on('card:toggle', () => {
+  const product = catalogModel.getPreview();
 
   if (!product || product.price === null) {
     return;
   }
 
-  if (basketModel.hasProduct(id)) {
+  if (basketModel.hasProduct(product.id)) {
     basketModel.removeProduct(product);
   } else {
     basketModel.addProduct(product);
@@ -254,12 +263,6 @@ events.on<{ field: string; value: string }>('order.address:change', ({ value }) 
 });
 
 events.on('order:submit', () => {
-  const errors = buyerModel.validate();
-
-  if (!isOrderStepValid(errors)) {
-    return;
-  }
-
   currentModalView = 'contacts';
 
   modal.render({
@@ -281,17 +284,16 @@ events.on<{ field: string; value: string }>('contacts.phone:change', ({ value })
 
 events.on('contacts:submit', () => {
   const buyer = buyerModel.getData();
-  const errors = buyerModel.validate();
 
-  if (!isContactsStepValid(errors)) {
+  if (!buyer.payment) {
     return;
   }
 
   const order: IOrder = {
-    payment: buyer.payment as TPayment,
-    email: buyer.email as string,
-    phone: buyer.phone as string,
-    address: buyer.address as string,
+    payment: buyer.payment,
+    email: buyer.email,
+    phone: buyer.phone,
+    address: buyer.address,
     total: basketModel.getTotal(),
     items: basketModel.getItems().map((item) => item.id),
   };

@@ -1,21 +1,17 @@
 import { Component } from '../base/Component';
-import { IEvents } from '../base/Events';
 import { IProduct } from '../../types';
 
-export class Card extends Component<IProduct> {
-  protected _id = '';
+export type TCard = Pick<IProduct, 'title' | 'price'>;
+
+export class Card<T> extends Component<TCard & T> {
   protected titleElement: HTMLElement;
   protected priceElement: HTMLElement;
 
-  constructor(container: HTMLElement, protected events: IEvents) {
+  constructor(container: HTMLElement) {
     super(container);
 
     this.titleElement = container.querySelector('.card__title') as HTMLElement;
     this.priceElement = container.querySelector('.card__price') as HTMLElement;
-  }
-
-  set id(value: string) {
-    this._id = value;
   }
 
   set title(value: string) {

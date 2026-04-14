@@ -1,30 +1,31 @@
 import { IProduct } from '../../types';
 import { CDN_URL, categoryMap } from '../../utils/constants';
-import { IEvents } from '../base/Events';
 import { Card } from './Card';
 
-interface ICardPreviewData extends IProduct {
+type TCardPreview = Pick<IProduct, 'category' | 'image' | 'description'> & {
   buttonText: string;
   disabled: boolean;
+};
+
+interface ICardPreviewActions {
+  onClick: () => void;
 }
 
-export class CardPreview extends Card {
+export class CardPreview extends Card<TCardPreview> {
   protected categoryElement: HTMLElement;
   protected imageElement: HTMLImageElement;
   protected descriptionElement: HTMLElement;
   protected buttonElement: HTMLButtonElement;
 
-  constructor(container: HTMLElement, events: IEvents) {
-    super(container, events);
+  constructor(container: HTMLElement, actions: ICardPreviewActions) {
+    super(container);
 
     this.categoryElement = container.querySelector('.card__category') as HTMLElement;
     this.imageElement = container.querySelector('.card__image') as HTMLImageElement;
     this.descriptionElement = container.querySelector('.card__text') as HTMLElement;
     this.buttonElement = container.querySelector('.card__button') as HTMLButtonElement;
 
-    this.buttonElement.addEventListener('click', () => {
-      this.events.emit('card:toggle', { id: this._id });
-    });
+    this.buttonElement.addEventListener('click', actions.onClick);
   }
 
   set category(value: string) {
@@ -47,9 +48,5 @@ export class CardPreview extends Card {
 
   set disabled(value: boolean) {
     this.buttonElement.disabled = value;
-  }
-
-  render(data: ICardPreviewData): HTMLElement {
-    return super.render(data);
   }
 }

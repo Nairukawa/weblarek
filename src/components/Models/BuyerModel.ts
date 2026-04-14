@@ -2,7 +2,7 @@ import { IBuyer, IBuyerFormErrors, TPayment } from '../../types';
 import { IEvents } from '../base/Events';
 
 export class BuyerModel {
-  protected payment: TPayment | '' = '';
+  protected payment: TPayment | null = null;
   protected email: string = '';
   protected phone: string = '';
   protected address: string = '';
@@ -29,9 +29,9 @@ export class BuyerModel {
     this.events.emit('buyer:changed', this.getData());
   }
 
-  getData(): Partial<IBuyer> {
+  getData(): IBuyer {
     return {
-      payment: this.payment as TPayment,
+      payment: this.payment,
       email: this.email,
       phone: this.phone,
       address: this.address,
@@ -39,7 +39,7 @@ export class BuyerModel {
   }
 
   clear(): void {
-    this.payment = '';
+    this.payment = null;
     this.email = '';
     this.phone = '';
     this.address = '';

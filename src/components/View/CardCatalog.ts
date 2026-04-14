@@ -1,21 +1,24 @@
 import { IProduct } from '../../types';
 import { CDN_URL, categoryMap } from '../../utils/constants';
-import { IEvents } from '../base/Events';
 import { Card } from './Card';
 
-export class CardCatalog extends Card {
+type TCardCatalog = Pick<IProduct, 'category' | 'image'>;
+
+interface ICardCatalogActions {
+  onClick: () => void;
+}
+
+export class CardCatalog extends Card<TCardCatalog> {
   protected categoryElement: HTMLElement;
   protected imageElement: HTMLImageElement;
 
-  constructor(container: HTMLElement, events: IEvents) {
-    super(container, events);
+  constructor(container: HTMLElement, actions: ICardCatalogActions) {
+    super(container);
 
     this.categoryElement = container.querySelector('.card__category') as HTMLElement;
     this.imageElement = container.querySelector('.card__image') as HTMLImageElement;
 
-    this.container.addEventListener('click', () => {
-      this.events.emit('card:select', { id: this._id });
-    });
+    this.container.addEventListener('click', actions.onClick);
   }
 
   set category(value: string) {
@@ -26,9 +29,5 @@ export class CardCatalog extends Card {
 
   set image(value: string) {
     this.setImage(this.imageElement, `${CDN_URL}${value}`, this.titleElement.textContent || '');
-  }
-
-  render(data: IProduct): HTMLElement {
-    return super.render(data);
   }
 }
