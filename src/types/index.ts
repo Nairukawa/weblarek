@@ -43,4 +43,4 @@ export interface IOrder extends IBuyer {
 export interface IOrderResult {
   id: string;
   total: number;
-}
+} 
